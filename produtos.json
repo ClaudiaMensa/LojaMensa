@@ -8,8 +8,17 @@
     "foto": "./CANETABRANCA.JPG",
     "descricao": "CANETA BRANCA COM TOUCH"
   },
-  {
+   {
     "id": "PROD002",
+    "nome": "Lapis",
+    "categoria": "Material Escritório",
+    "preco": 2.00,
+    "estoque": 10,
+    "foto": "./LAPIS.JPG",
+    "descricao": "LAPIS VERDE com LOGO"
+  },
+  {
+    "id": "PROD003",
     "nome": "CANECA",
     "categoria": "Acessórios",
     "preco": 40.00,
