@@ -3,21 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minha Lojinha de Orçamentos</title>
+    <title>Sistema de Orçamentos e Workflow</title>
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
-        .produto { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; gap: 15px; align-items: center; }
-        .produto img { width: 100px; height: 100px; border-radius: 5px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+        .produto { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; gap: 15px; align-items: center; justify-content: space-between; }
+        .produto-info { display: flex; gap: 15px; align-items: center; }
+        .produto img { width: 80px; height: 80px; border-radius: 5px; }
+        .workflow-painel { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
+        .btn-acao { background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; margin-top: 5px; }
+        .btn-orcamento { background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        button:disabled { background: #ccc !important; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
-    <h1>Catálogo de Produtos</h1>
+    <h1>Catálogo de Produtos & Gestão de Fluxo</h1>
     <div id="lista-produtos">Carregando produtos...</div>
 
+    <div id="workflow" class="workflow-painel">
+        <h3>🔄 Gerenciador de Workflow (Ações da Cláudia / Presidência)</h3>
+        <p>Use os botões abaixo para notificar o Formspree sobre a mudança de estado do produto: <strong id="wf-produto-nome">-</strong></p>
+        <button class="btn-acao" style="background:#fd7e14;" onclick="avancarWorkflow('Solicitar Aprovacao')">2. Solicitar Aprovação</button>
+        <button class="btn-acao" style="background:#6f42c1;" onclick="avancarWorkflow('Aprovar Compra')">3. Aprovar Compra</button>
+        <button class="btn-acao" style="background:#17a2b8;" onclick="avancarWorkflow('Solicitar Pagamento')">4. Solicitar Pagamento</button>
+        <button class="btn-acao" style="background:#ffc107; color:black;" onclick="avancarWorkflow('Informar Pagamento')">5. Informar Pagamento</button>
+        <button class="btn-acao" style="background:#20c997;" onclick="avancarWorkflow('Informar Recebimento')">6. Informar Recebimento</button>
+    </div>
+
     <script>
-        // Carrega o "Banco de Dados" JSON
+        const FORMSPREE_ENDPOINT = "https://formspree.io/f/SEU_ID_DO_FORMSPREE";
+        
+        // Variáveis globais para controlar o item ativo no Workflow atual
+        let produtoAtivoNome = "";
+        let produtoAtivoId = "";
+
+        // Carrega os dados do JSON
         fetch('produtos.json')
             .then(response => response.json())
             .then(produtos => {
@@ -25,37 +45,70 @@
                 container.innerHTML = '';
 
                 produtos.forEach(prod => {
-                    if(prod.estoque > 0) {
-                        const div = document.createElement('div');
-                        div.className = 'produto';
-                        div.innerHTML = `
+                    const div = document.createElement('div');
+                    div.className = 'produto';
+                    div.innerHTML = `
+                        <div class="produto-info">
                             <img src="${prod.foto}" alt="${prod.nome}">
                             <div>
-                                <h3>${prod.nome}</h3>
-                                <p>${prod.descricao}</p>
-                                <p><strong>Preço:</strong> R$ ${prod.preco.toFixed(2)}</p>
-                                <p><strong>Disponível:</strong> ${prod.estoque} unidades</p>
-                                <button onclick="solicitarOrcamento('${prod.nome}', '${prod.id}')">Solicitar Orçamento</button>
+                                <h3>${prod.nome} (ID: ${prod.id})</h3>
+                                <p>Disponível: ${prod.estoque} | Preço: R$ ${prod.preco.toFixed(2)}</p>
                             </div>
-                        `;
-                        container.appendChild(div);
-                    }
+                        </div>
+                        <button class="btn-orcamento" id="btn-${prod.id}" onclick="iniciarOrcamento('${prod.nome}', '${prod.id}')">1. Solicitar Orçamento</button>
+                    `;
+                    container.appendChild(div);
                 });
             });
 
-        // Função que abre o cliente de e-mail do usuário com os dados preenchidos
-        function solicitarOrcamento(nomeProduto, idProduto) {
-            const emailPara = "claudia@mensa.org.br";
-            const emailCc = "presidencia@mensa.org.br";
-            const assunto = `Solicitação de Orçamento - ${nomeProduto} (${idProduto})`;
+        // Etapa 1: Inicia o processo enviando o Orçamento original
+        function iniciarOrcamento(nomeProduto, idProduto) {
+            produtoAtivoNome = nomeProduto;
+            produtoAtivoId = idProduto;
             
-            const corpoMensagem = `Olá,\n\nGostaria de solicitar a validação de orçamento e reserva de estoque para o seguinte item:\n\nProduto: ${nomeProduto}\nID do Produto: ${idProduto}\n\nNo aguardo da aprovação.`;
+            document.getElementById(`btn-${idProduto}`).disabled = true;
+            document.getElementById(`btn-${idProduto}`).innerText = "Enviando...";
 
-            // Monta a URL do mailto escapando os caracteres especiais de forma correta
-            const urlMailto = `mailto:${emailPara}?cc=${emailCc}&subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpoMensagem)}`;
-            
-            // Abre o gerenciador de e-mail do usuário
-            window.location.href = urlMailto;
+            enviarParaFormspree("Solicitar Orcamento", `Nova solicitação de orçamento criada para o item: ${nomeProduto}.`);
+        }
+
+        // Etapas 2 a 6: Avançam o estado conforme a interação dos gestores
+        function avancarWorkflow(etapa) {
+            if(!produtoAtivoId) return alert("Selecione ou clique em um produto primeiro!");
+            enviarParaFormspree(etapa, `Atualização de status do workflow do produto ID ${produtoAtivoId}. Novo estado: ${etapa}.`);
+        }
+
+        // Função mestre de envio Ajax para o Formspree
+        function enviarParaFormspree(etapa, mensagemTexto) {
+            const dadosEmail = {
+                _subject: `[WORKFLOW: ${etapa.toUpperCase()}] - ${produtoAtivoNome} (${produtoAtivoId})`,
+                Etapa_Atual: etapa,
+                Produto: produtoAtivoNome,
+                ID_Produto: produtoAtivoId,
+                Historico_Mensagem: mensagemTexto,
+                Destinatarios_Alerta: "claudia@mensa.org.br; presidencia@mensa.org.br"
+            };
+
+            fetch(FORMSPREE_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(dadosEmail)
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert(`Etapa "${etapa}" processada e enviada com sucesso ao Formspree!`);
+                    
+                    // Se foi o início, abre o painel visual das próximas etapas
+                    if(etapa === "Solicitar Orcamento") {
+                        document.getElementById("workflow").style.display = "block";
+                        document.getElementById("wf-produto-nome").innerText = `${produtoAtivoNome} (${produtoAtivoId})`;
+                        document.getElementById(`btn-${produtoAtivoId}`).innerText = "Orçado";
+                    }
+                } else {
+                    alert('Erro ao processar etapa. Verifique as credenciais do Formspree.');
+                }
+            })
+            .catch(() => alert('Erro de conexão.'));
         }
     </script>
 </body>
