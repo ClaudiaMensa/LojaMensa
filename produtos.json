@@ -1,0 +1,20 @@
+[
+  {
+    "id": "PROD001",
+    "nome": "Canetas Brancas",
+    "categoria": "Material Escritório",
+    "preco": 5.00,
+    "estoque": 10,
+    "foto": "./CANETABRANCA.JPG",
+    "descricao": "CANETA BRANCA COM TOUCH"
+  },
+  {
+    "id": "PROD002",
+    "nome": "CANECA",
+    "categoria": "Acessórios",
+    "preco": 40.00,
+    "estoque": 30,
+    "foto": "./CANECA.JPG",
+    "descricao": "CANECA BRANCA COM LOGO VERDE"
+  }
+]
