@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Lojinha de Orçamentos</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f4f4f4; }
+        .produto { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; display: flex; gap: 15px; align-items: center; }
+        .produto img { width: 100px; height: 100px; border-radius: 5px; }
+        button { background: #25D366; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h1>Catálogo de Produtos</h1>
+    <div id="lista-produtos">Carregando produtos...</div>
+
+    <script>
+        // Carrega o "Banco de Dados" JSON
+        fetch('produtos.json')
+            .then(response => response.json())
+            .then(produtos => {
+                const container = document.getElementById('lista-produtos');
+                container.innerHTML = '';
+
+                produtos.forEach(prod => {
+                    if(prod.estoque > 0) { // Só mostra se tiver estoque
+                        const div = document.createElement('div');
+                        div.className = 'produto';
+                        div.innerHTML = `
+                            <img src="${prod.foto}" alt="${prod.nome}">
+                            <div>
+                                <h3>${prod.nome}</h3>
+                                <p>${prod.descricao}</p>
+                                <p><strong>Preço:</strong> R$ ${prod.preco.toFixed(2)}</p>
+                                <p><strong>Disponível:</strong> ${prod.estoque} unidades</p>
+                                <button onclick="solicitarOrcamento('${prod.nome}', '${prod.id}')">Solicitar Orçamento</button>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    }
+                });
+            });
+
+        // Função que envia o orçamento direto para o seu WhatsApp
+        function solicitarOrcamento(nomeProduto, idProduto) {
+            const numeroWhats = "5511999999999"; // COLOQUE SEU SEU NUMERO AQUI (Com DDD)
+            const texto = `Olá! Gostaria de solicitar o orçamento do seguinte item:\n\nProduto: ${nomeProduto}\nID: ${idProduto}\n\nNo aguardo da aprovação de estoque.`;
+            const url = `https://api.whatsapp.com/send?phone=${numeroWhats}&text=${encodeURIComponent(texto)}`;
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>
