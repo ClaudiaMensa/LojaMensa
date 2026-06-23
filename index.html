@@ -10,8 +10,11 @@
         .produto-info { display: flex; gap: 15px; align-items: center; }
         .produto img { width: 80px; height: 80px; border-radius: 5px; }
         .workflow-painel { background: #e9ecef; padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
-        .btn-acao { background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; margin-top: 5px; }
-        .btn-orcamento { background: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .secao-independente { padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid; }
+        .recebimento { background: #e8f5e9; border-color: #c8e6c9; }
+        .retirada { background: #ffebee; border-color: #ffcdd2; }
+        .btn-acao { color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 5px; margin-top: 5px; }
+        .btn-orcamento { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         button:disabled { background: #ccc !important; cursor: not-allowed; }
     </style>
 </head>
@@ -22,18 +25,28 @@
 
     <div id="workflow" class="workflow-painel">
         <h3>🔄 Gerenciador de Workflow (Ações da Cláudia / Presidência)</h3>
-        <p>Use os botões abaixo para notificar o Formspree sobre a mudança de estado do produto: <strong id="wf-produto-nome">-</strong></p>
+        <p>Avançar o estado da compra para o item: <strong id="wf-produto-nome">-</strong></p>
         <button class="btn-acao" style="background:#fd7e14;" onclick="avancarWorkflow('Solicitar Aprovacao')">2. Solicitar Aprovação</button>
         <button class="btn-acao" style="background:#6f42c1;" onclick="avancarWorkflow('Aprovar Compra')">3. Aprovar Compra</button>
         <button class="btn-acao" style="background:#17a2b8;" onclick="avancarWorkflow('Solicitar Pagamento')">4. Solicitar Pagamento</button>
         <button class="btn-acao" style="background:#ffc107; color:black;" onclick="avancarWorkflow('Informar Pagamento')">5. Informar Pagamento</button>
-        <button class="btn-acao" style="background:#20c997;" onclick="avancarWorkflow('Informar Recebimento')">6. Informar Recebimento</button>
+    </div>
+
+    <div class="secao-independente recebimento">
+        <h3>📦 Controle de Entrada Física (Almoxarifado / Logística)</h3>
+        <p>Aviso de chegada de novos itens ou reposição no estoque físico.</p>
+        <button class="btn-acao" style="background:#2e7d32;" onclick="notificarRecebimentoIndependente()">Informar Recebimento de Mercadoria</button>
+    </div>
+
+    <div class="secao-independente retirada">
+        <h3>🚚 Controle de Saída Física (Despacho / Consumo)</h3>
+        <p>Aviso de retirada física, envio de produto ou baixa imediata do estoque.</p>
+        <button class="btn-acao" style="background:#c62828;" onclick="notificarRetiradaIndependente()">Informar Retirada de Mercadoria</button>
     </div>
 
     <script>
         const FORMSPREE_ENDPOINT = "https://formspree.io/f/SEU_ID_DO_FORMSPREE";
         
-        // Variáveis globais para controlar o item ativo no Workflow atual
         let produtoAtivoNome = "";
         let produtoAtivoId = "";
 
@@ -61,7 +74,7 @@
                 });
             });
 
-        // Etapa 1: Inicia o processo enviando o Orçamento original
+        // Etapa 1 do Fluxo do Cliente
         function iniciarOrcamento(nomeProduto, idProduto) {
             produtoAtivoNome = nomeProduto;
             produtoAtivoId = idProduto;
@@ -69,16 +82,48 @@
             document.getElementById(`btn-${idProduto}`).disabled = true;
             document.getElementById(`btn-${idProduto}`).innerText = "Enviando...";
 
-            enviarParaFormspree("Solicitar Orcamento", `Nova solicitação de orçamento criada para o item: ${nomeProduto}.`);
+            enviarParaFormspree("Solicitar Orcamento", `Nova conclusão de intenção de orçamento criada para o item: ${nomeProduto}.`);
         }
 
-        // Etapas 2 a 6: Avançam o estado conforme a interação dos gestores
+        // Etapas 2 a 5 do Fluxo de Compra
         function avancarWorkflow(etapa) {
-            if(!produtoAtivoId) return alert("Selecione ou clique em um produto primeiro!");
+            if(!produtoAtivoId) return alert("Selecione ou clique em um produto primeiro para avançar este fluxo!");
             enviarParaFormspree(etapa, `Atualização de status do workflow do produto ID ${produtoAtivoId}. Novo estado: ${etapa}.`);
         }
 
-        // Função mestre de envio Ajax para o Formspree
+        // Ação Isolada de Recebimento
+        function notificarRecebimentoIndependente() {
+            let idProd = produtoAtivoId || prompt("Digite o ID do Produto recebido (Ex: PROD001):");
+            if (!idProd) return;
+
+            const dadosEmail = {
+                _subject: `[ESTOQUE: RECEBIMENTO] - Entrada de Material (ID: ${idProd})`,
+                Acao: "Informar Recebimento",
+                ID_Produto: idProd,
+                Mensagem: `Confirmação de entrada física de material realizada no estoque. Atualizar o arquivo JSON do GitHub de forma correspondente.`,
+                Destinatarios_Alerta: "claudia@mensa.org.br; presidencia@mensa.org.br"
+            };
+
+            dispararFetch(dadosEmail, `Notificação de recebimento do item ${idProd} enviada com sucesso.`);
+        }
+
+        // Ação Isolada de Retirada
+        function notificarRetiradaIndependente() {
+            let idProd = produtoAtivoId || prompt("Digite o ID do Produto retirado (Ex: PROD001):");
+            if (!idProd) return;
+
+            const dadosEmail = {
+                _subject: `[ESTOQUE: RETIRADA] - Saída de Material (ID: ${idProd})`,
+                Acao: "Informar Retirada",
+                ID_Produto: idProd,
+                Mensagem: `Alerta de saída/despacho físico de produto concluído. Reduzir a quantidade no arquivo JSON do GitHub.`,
+                Destinatarios_Alerta: "claudia@mensa.org.br; presidencia@mensa.org.br"
+            };
+
+            dispararFetch(dadosEmail, `Alerta de retirada do item ${idProd} enviado com sucesso.`);
+        }
+
+        // Função auxiliar de envio de Workflow
         function enviarParaFormspree(etapa, mensagemTexto) {
             const dadosEmail = {
                 _subject: `[WORKFLOW: ${etapa.toUpperCase()}] - ${produtoAtivoNome} (${produtoAtivoId})`,
@@ -89,26 +134,30 @@
                 Destinatarios_Alerta: "claudia@mensa.org.br; presidencia@mensa.org.br"
             };
 
+            dispararFetch(dadosEmail, `Etapa "${etapa}" processada e enviada ao Formspree!`);
+
+            if(etapa === "Solicitar Orcamento") {
+                document.getElementById("workflow").style.display = "block";
+                document.getElementById("wf-produto-nome").innerText = `${produtoAtivoNome} (${produtoAtivoId})`;
+                document.getElementById(`btn-${produtoAtivoId}`).innerText = "Orçado";
+            }
+        }
+
+        // Requisição padrão para o Formspree
+        function dispararFetch(dados, mensagemSucesso) {
             fetch(FORMSPREE_ENDPOINT, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body: JSON.stringify(dadosEmail)
+                body: JSON.stringify(dados)
             })
             .then(response => {
                 if (response.ok) {
-                    alert(`Etapa "${etapa}" processada e enviada com sucesso ao Formspree!`);
-                    
-                    // Se foi o início, abre o painel visual das próximas etapas
-                    if(etapa === "Solicitar Orcamento") {
-                        document.getElementById("workflow").style.display = "block";
-                        document.getElementById("wf-produto-nome").innerText = `${produtoAtivoNome} (${produtoAtivoId})`;
-                        document.getElementById(`btn-${produtoAtivoId}`).innerText = "Orçado";
-                    }
+                    alert(mensagemSucesso);
                 } else {
-                    alert('Erro ao processar etapa. Verifique as credenciais do Formspree.');
+                    alert('Erro ao enviar dados. Verifique o ID do Formspree.');
                 }
             })
-            .catch(() => alert('Erro de conexão.'));
+            .catch(() => alert('Erro de conexão com o servidor de e-mail.'));
         }
     </script>
 </body>
